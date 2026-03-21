@@ -1,0 +1,66 @@
+diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
+index 9252ba4..690508c 100644
+--- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
++++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
+@@ -55,7 +55,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
+   }
+   return result.data;
+ }
++async function simulateHumanBehavior(page) {
++  const delay = 1000 + Math.floor(Math.random() * 3000);
++  await new Promise(resolve => setTimeout(resolve, delay));
++  try {
++    const viewport = page.viewport();
++    if (viewport) {
++      const x = Math.floor(Math.random() * viewport.width);
++      const y = Math.floor(Math.random() * viewport.height);
++      await page.mouse.move(x, y, { steps: 5 + Math.floor(Math.random() * 10) });
++    }
++  } catch (e) {
++    // ignore mouse movement errors
++  }
++}
+ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
++  await simulateHumanBehavior(page);
+   const [result, status] = await page.evaluate(async innerUrl => {
+     let response;
+     try {
+@@ -82,6 +97,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
+   return null;
+ }
+ async function fetchPostWithinPage(page, url, data, extraHeaders = {}, ignoreErrors = false) {
++  await simulateHumanBehavior(page);
+   const result = await page.evaluate(async (innerUrl, innerData, innerExtraHeaders) => {
+     const response = await fetch(innerUrl, {
+       method: 'POST',
+diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js b/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
+index c1a1f32..fe4258e 100644
+--- a/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
++++ b/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
+@@ -19,7 +19,7 @@ var _errors = require("./errors");
+ var _browser = require("../helpers/browser");
+ function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
+ const RATE_LIMIT = {
+-  SLEEP_BETWEEN: 1000,
++  SLEEP_BETWEEN: 3000,
+   TRANSACTIONS_BATCH_SIZE: 10
+ };
+ const COUNTRY_CODE = '212';
+@@ -240,15 +240,11 @@ class IsracardAmexBaseScraper extends _baseScraperWithBrowser.BaseScraperWithBro
+   async login(credentials) {
+     await this.page.setRequestInterception(true);
+     this.page.on('request', request => {
+-      if (request.url().includes('detector-dom.min.js')) {
+-        debug('force abort for request do download detector-dom.min.js resource');
+-        void request.abort(undefined, _browser.interceptionPriorities.abort);
+-      } else {
+-        void request.continue(undefined, _browser.interceptionPriorities.continue);
+-      }
++      void request.continue(undefined, _browser.interceptionPriorities.continue);
+     });
+     await (0, _browser.maskHeadlessUserAgent)(this.page);
+     await this.navigateTo(`${this.baseUrl}/personalarea/Login`);
++    await (0, _waiting.sleep)(5000);
+     this.emitProgress(_definitions.ScraperProgressTypes.LoggingIn);
+     const validateUrl = `${this.servicesUrl}?reqName=ValidateIdData`;
+     const validateRequest = {

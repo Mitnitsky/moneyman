@@ -1,5 +1,7 @@
 import type { CompanyTypes } from "israeli-bank-scrapers";
-import puppeteer, {
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import {
   TargetType,
   type Browser,
   type BrowserContext,
@@ -13,6 +15,8 @@ import {
 import { initDomainTracking } from "../security/domains.js";
 import { solveTurnstile } from "./cloudflareSolver.js";
 import { config } from "../config.js";
+
+puppeteer.use(StealthPlugin());
 
 export const browserArgs = [
   "--disable-dev-shm-usage",
@@ -34,7 +38,7 @@ export async function createBrowser(): Promise<Browser> {
   } satisfies PuppeteerLaunchOptions;
 
   logger("Creating browser", options);
-  return puppeteer.launch(options);
+  return puppeteer.launch(options) as unknown as Browser;
 }
 
 export async function createSecureBrowserContext(
@@ -67,19 +71,7 @@ async function initCloudflareSkipping(browserContext: BrowserContext) {
 
         await page.setUserAgent(newUA);
         await page.setExtraHTTPHeaders({
-          "accept-language": "en-US,en;q=0.9,he;q=0.8",
-        });
-        await page.evaluateOnNewDocument(() => {
-          // Apply lightweight stealth patches before page scripts run.
-          Object.defineProperty(navigator, "webdriver", {
-            get: () => undefined,
-          });
-          Object.defineProperty(navigator, "language", {
-            get: () => "en-US",
-          });
-          Object.defineProperty(navigator, "languages", {
-            get: () => ["en-US", "en", "he"],
-          });
+          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
         });
 
         page.on(
