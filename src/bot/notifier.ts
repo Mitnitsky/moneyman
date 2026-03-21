@@ -8,6 +8,28 @@ import { assignDeprecationHandler } from "./deprecationManager.js";
 
 const logger = createLogger("notifier");
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label: string,
+): Promise<T> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      logger(`${label} failed (attempt ${attempt}/${MAX_RETRIES}): ${e}`);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+      } else {
+        throw e;
+      }
+    }
+  }
+  throw new Error(`${label} failed unexpectedly`);
+}
+
 const telegramConfig = config.options.notifications?.telegram;
 const bot = telegramConfig ? new Telegraf(telegramConfig.apiKey) : null;
 
@@ -39,15 +61,19 @@ export async function send(message: string, parseMode?: "HTML") {
 
     if (bot && telegramConfig?.chatId) {
       const buffer = Buffer.from(message, "utf-8");
-      await bot.telegram.sendDocument(
-        telegramConfig.chatId,
-        {
-          source: buffer,
-          filename: `message-${new Date().toISOString().replaceAll(":", "-")}.txt`,
-        },
-        {
-          caption: "Full message attached",
-        },
+      await withRetry(
+        () =>
+          bot.telegram.sendDocument(
+            telegramConfig.chatId,
+            {
+              source: buffer,
+              filename: `message-${new Date().toISOString().replaceAll(":", "-")}.txt`,
+            },
+            {
+              caption: "Full message attached",
+            },
+          ),
+        "sendDocument",
       );
     }
     return;
@@ -56,9 +82,13 @@ export async function send(message: string, parseMode?: "HTML") {
   if (!bot || !telegramConfig?.chatId) {
     return;
   }
-  return await bot.telegram.sendMessage(telegramConfig.chatId, message, {
-    parse_mode: parseMode,
-  });
+  return await withRetry(
+    () =>
+      bot.telegram.sendMessage(telegramConfig.chatId, message, {
+        parse_mode: parseMode,
+      }),
+    "sendMessage",
+  );
 }
 
 export async function sendPhoto(photoPath: string, caption: string) {
@@ -66,10 +96,14 @@ export async function sendPhoto(photoPath: string, caption: string) {
   if (!bot || !telegramConfig?.chatId) {
     return;
   }
-  return await bot.telegram.sendPhoto(
-    telegramConfig.chatId,
-    { source: photoPath },
-    { caption, has_spoiler: true },
+  return await withRetry(
+    () =>
+      bot.telegram.sendPhoto(
+        telegramConfig.chatId,
+        { source: photoPath },
+        { caption, has_spoiler: true },
+      ),
+    "sendPhoto",
   );
 }
 
@@ -78,13 +112,17 @@ export async function sendPhotos(photos: Array<ImageWithCaption>) {
   if (photos.length === 0 || !bot || !telegramConfig?.chatId) {
     return;
   }
-  return await bot.telegram.sendMediaGroup(
-    telegramConfig.chatId,
-    photos.map(({ photoPath, caption }) => ({
-      type: "photo",
-      caption,
-      media: { source: photoPath },
-    })),
+  return await withRetry(
+    () =>
+      bot.telegram.sendMediaGroup(
+        telegramConfig.chatId,
+        photos.map(({ photoPath, caption }) => ({
+          type: "photo" as const,
+          caption,
+          media: { source: photoPath },
+        })),
+      ),
+    "sendPhotos",
   );
 }
 
@@ -94,10 +132,14 @@ export async function sendJSON(json: {}, filename: string) {
     return;
   }
   const buffer = Buffer.from(JSON.stringify(json, null, 2), "utf-8");
-  return await bot.telegram.sendDocument(telegramConfig.chatId, {
-    source: buffer,
-    filename,
-  });
+  return await withRetry(
+    () =>
+      bot.telegram.sendDocument(telegramConfig.chatId, {
+        source: buffer,
+        filename,
+      }),
+    "sendJSON",
+  );
 }
 
 export async function sendTextFile(filePath: string, caption?: string) {
@@ -105,10 +147,14 @@ export async function sendTextFile(filePath: string, caption?: string) {
   if (!bot || !telegramConfig?.chatId) {
     return;
   }
-  return await bot.telegram.sendDocument(
-    telegramConfig.chatId,
-    { source: filePath, filename: `${filePath}.txt` },
-    caption ? { caption } : undefined,
+  return await withRetry(
+    () =>
+      bot.telegram.sendDocument(
+        telegramConfig.chatId,
+        { source: filePath, filename: `${filePath}.txt` },
+        caption ? { caption } : undefined,
+      ),
+    "sendTextFile",
   );
 }
 
@@ -138,10 +184,10 @@ export async function editMessage(
       },
     );
   } catch (e) {
-    if (canIgnoreTelegramError(e)) {
+    if (e instanceof Error && canIgnoreTelegramError(e)) {
       logger(`Ignoring error`, e);
     } else {
-      throw e;
+      logger(`editMessage failed: ${e}`);
     }
   }
 }
