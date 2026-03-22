@@ -80,6 +80,12 @@ export const MoneymanDashSchema = z.object({
   token: z.string().min(1, { error: "Moneyman Dash token is required" }),
 });
 
+export const BizBuzSchema = z.object({
+  url: z.url({ error: "Invalid BizBuz ingest URL" }),
+  token: z.string().min(1, { error: "BizBuz ingest token is required" }),
+  familyId: z.string().min(1, { error: "BizBuz family ID is required" }),
+});
+
 export const TelegramStorageSchema = z.object({
   /**
    * Whether to send transactions as a JSON file to the Telegram chat.
@@ -104,6 +110,7 @@ export const StorageSchema = z
     sql: SqlStorageSchema.optional(),
     telegram: TelegramStorageSchema.optional(),
     moneyman: MoneymanDashSchema.optional(),
+    bizbuz: BizBuzSchema.optional(),
   })
   .refine((data) => Object.values(data).some(Boolean), {
     error: "At least one storage provider must be configured",
