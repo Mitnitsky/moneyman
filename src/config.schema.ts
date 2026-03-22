@@ -5,6 +5,7 @@ import z from "zod/v4";
 const AccountSchema = z.looseObject({
   companyId: z.string().min(1, { error: "Company ID is required" }),
   password: z.string().min(1, { error: "Password is required" }),
+  alias: z.string().optional(),
 });
 
 // Storage provider schemas

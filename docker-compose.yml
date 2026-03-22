@@ -1,5 +1,10 @@
 services:
-  monayman:
+  moneyman:
     build: .
-    env_file:
-      - .env
+    volumes:
+      - ./acc.json:/app/config.json:ro
+      - ./output:/app/output
+    environment:
+      - MONEYMAN_CONFIG_PATH=/app/config.json
+      - MONEYMAN_UNSAFE_STDOUT=true
+      - DEBUG=moneyman:*

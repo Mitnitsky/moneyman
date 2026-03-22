@@ -56,8 +56,9 @@ export async function scrapeAccounts(
   const results = await parallelLimit<AccountConfig, AccountScrapeResult[]>(
     accounts.map((account, i) => async () => {
       const { companyId } = account;
+      const label = (account as Record<string, unknown>).alias as string || companyId;
       return loggerContextStore.run(
-        { prefix: `[#${i} ${companyId}]` },
+        { prefix: `[#${i} ${label}]` },
         async () =>
           scrapeAccount(
             account,
