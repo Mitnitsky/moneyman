@@ -1,3 +1,16 @@
+diff --git a/node_modules/israeli-bank-scrapers/lib/definitions.js b/node_modules/israeli-bank-scrapers/lib/definitions.js
+index e9fe28e..0321291 100644
+--- a/node_modules/israeli-bank-scrapers/lib/definitions.js
++++ b/node_modules/israeli-bank-scrapers/lib/definitions.js
+@@ -31,7 +31,7 @@ let CompanyTypes = exports.CompanyTypes = /*#__PURE__*/function (CompanyTypes) {
+ const SCRAPERS = exports.SCRAPERS = {
+   [CompanyTypes.hapoalim]: {
+     name: 'Bank Hapoalim',
+-    loginFields: ['userCode', PASSWORD_FIELD]
++    loginFields: ['userCode', PASSWORD_FIELD, 'otpCodeRetriever', 'phoneNumber']
+   },
+   [CompanyTypes.leumi]: {
+     name: 'Bank Leumi',
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 index 9252ba4..690508c 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
@@ -64,3 +77,77 @@ index c1a1f32..fe4258e 100644
      this.emitProgress(_definitions.ScraperProgressTypes.LoggingIn);
      const validateUrl = `${this.servicesUrl}?reqName=ValidateIdData`;
      const validateRequest = {
+diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
+index e7dc174..10a5979 100644
+--- a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
++++ b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
+@@ -177,6 +177,60 @@ function createLoginFields(credentials) {
+     value: credentials.password
+   }];
+ }
++async function handleOtpIfNeeded(page, credentials) {
++  debug('checking for OTP dialog...');
++  try {
++    // Wait up to 5 seconds for either OTP dialog or redirect
++    const otpDialog = await Promise.race([
++      page.waitForSelector('auth-otp-login', { timeout: 5000 }).then(el => el),
++      (0, _navigation.waitForRedirect)(page, 5000).then(() => null),
++    ]).catch(() => null);
++
++    if (!otpDialog) {
++      debug('no OTP dialog detected, waiting for redirect...');
++      await (0, _navigation.waitForRedirect)(page, 30000);
++      return;
++    }
++
++    debug('OTP dialog detected!');
++
++    if (!credentials.otpCodeRetriever) {
++      debug('no otpCodeRetriever provided, waiting for manual OTP entry...');
++      // Wait up to 5 minutes for manual entry and redirect
++      await (0, _navigation.waitForRedirect)(page, 300000);
++      return;
++    }
++
++    debug('requesting OTP code via otpCodeRetriever...');
++    const otpCode = await credentials.otpCodeRetriever();
++    debug('got OTP code, entering into form...');
++
++    if (!otpCode || otpCode.length < 5) {
++      throw new Error('Invalid OTP code received (must be at least 5 digits)');
++    }
++
++    // Enter code into separated inputs
++    for (let i = 0; i < Math.min(otpCode.length, 5); i++) {
++      const selector = `[data-testid="separated-${i}"]`;
++      await page.waitForSelector(selector, { timeout: 5000 });
++      await page.click(selector);
++      await page.type(selector, otpCode[i]);
++      await (0, _waiting.sleep)(100);
++    }
++
++    debug('clicking submit...');
++    await (0, _waiting.sleep)(500);
++    await page.click('button.btn-red_1');
++
++    debug('waiting for redirect after OTP...');
++    await (0, _navigation.waitForRedirect)(page, 30000);
++    debug('OTP flow completed successfully');
++  } catch (e) {
++    debug('OTP handling error: %s', e.message);
++    throw e;
++  }
++}
++
+ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+   // eslint-disable-next-line class-methods-use-this
+   get baseUrl() {
+@@ -187,7 +241,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+       loginUrl: `${this.baseUrl}/cgi-bin/poalwwwc?reqName=getLogonPage`,
+       fields: createLoginFields(credentials),
+       submitButtonSelector: '.login-btn',
+-      postAction: async () => (0, _navigation.waitForRedirect)(this.page),
++      postAction: async () => handleOtpIfNeeded(this.page, credentials),
+       possibleResults: getPossibleLoginResults(this.baseUrl)
+     };
+   }
