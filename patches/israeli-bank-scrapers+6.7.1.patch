@@ -78,22 +78,25 @@ index c1a1f32..fe4258e 100644
      const validateUrl = `${this.servicesUrl}?reqName=ValidateIdData`;
      const validateRequest = {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
-index e7dc174..06d330d 100644
+index e7dc174..484ab43 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
-@@ -177,6 +177,57 @@ function createLoginFields(credentials) {
+@@ -177,6 +177,60 @@ function createLoginFields(credentials) {
      value: credentials.password
    }];
  }
 +async function handleOtpIfNeeded(page, credentials) {
-+  debug('checking for OTP dialog (7s)...');
++  debug('racing OTP dialog vs redirect...');
 +  try {
-+    // Wait up to 7 seconds specifically for the OTP dialog
-+    const otpDialog = await page.waitForSelector('auth-otp-login', { timeout: 7000 }).catch(() => null);
++    const LOGIN_URL = 'https://login.bankhapoalim.co.il';
++    // Race: OTP dialog appears OR page redirects away from login
++    const result = await Promise.race([
++      page.waitForSelector('auth-otp-login', { timeout: 30000 }).then(el => 'otp'),
++      (0, _navigation.waitForRedirect)(page, 30000).then(() => 'redirect'),
++    ]);
 +
-+    if (!otpDialog) {
-+      debug('no OTP dialog detected, proceeding with normal redirect...');
-+      await (0, _navigation.waitForRedirect)(page, 30000);
++    if (result === 'redirect') {
++      debug('redirected without OTP, login successful');
 +      return;
 +    }
 +
@@ -139,7 +142,7 @@ index e7dc174..06d330d 100644
  class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    // eslint-disable-next-line class-methods-use-this
    get baseUrl() {
-@@ -187,7 +238,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -187,7 +241,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        loginUrl: `${this.baseUrl}/cgi-bin/poalwwwc?reqName=getLogonPage`,
        fields: createLoginFields(credentials),
        submitButtonSelector: '.login-btn',
