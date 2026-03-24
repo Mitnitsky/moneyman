@@ -78,24 +78,21 @@ index c1a1f32..fe4258e 100644
      const validateUrl = `${this.servicesUrl}?reqName=ValidateIdData`;
      const validateRequest = {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
-index e7dc174..10a5979 100644
+index e7dc174..06d330d 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
-@@ -177,6 +177,60 @@ function createLoginFields(credentials) {
+@@ -177,6 +177,57 @@ function createLoginFields(credentials) {
      value: credentials.password
    }];
  }
 +async function handleOtpIfNeeded(page, credentials) {
-+  debug('checking for OTP dialog...');
++  debug('checking for OTP dialog (7s)...');
 +  try {
-+    // Wait up to 5 seconds for either OTP dialog or redirect
-+    const otpDialog = await Promise.race([
-+      page.waitForSelector('auth-otp-login', { timeout: 5000 }).then(el => el),
-+      (0, _navigation.waitForRedirect)(page, 5000).then(() => null),
-+    ]).catch(() => null);
++    // Wait up to 7 seconds specifically for the OTP dialog
++    const otpDialog = await page.waitForSelector('auth-otp-login', { timeout: 7000 }).catch(() => null);
 +
 +    if (!otpDialog) {
-+      debug('no OTP dialog detected, waiting for redirect...');
++      debug('no OTP dialog detected, proceeding with normal redirect...');
 +      await (0, _navigation.waitForRedirect)(page, 30000);
 +      return;
 +    }
@@ -142,7 +139,7 @@ index e7dc174..10a5979 100644
  class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
    // eslint-disable-next-line class-methods-use-this
    get baseUrl() {
-@@ -187,7 +241,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+@@ -187,7 +238,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        loginUrl: `${this.baseUrl}/cgi-bin/poalwwwc?reqName=getLogonPage`,
        fields: createLoginFields(credentials),
        submitButtonSelector: '.login-btn',
