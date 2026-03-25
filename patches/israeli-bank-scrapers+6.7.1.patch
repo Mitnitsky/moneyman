@@ -11,6 +11,19 @@ index e9fe28e..0321291 100644
    },
    [CompanyTypes.leumi]: {
      name: 'Bank Leumi',
+diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js b/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
+index efd9183..cf12d26 100644
+--- a/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
++++ b/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
+@@ -45,7 +45,7 @@ async function fillInput(pageOrFrame, inputSelector, inputValue) {
+     // @ts-ignore
+     inputElement.value = '';
+   });
+-  await pageOrFrame.type(inputSelector, inputValue);
++  await pageOrFrame.type(inputSelector, inputValue, { delay: 50 });
+ }
+ async function setValue(pageOrFrame, inputSelector, inputValue) {
+   await pageOrFrame.$eval(inputSelector, (input, value) => {
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 index 9252ba4..690508c 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
