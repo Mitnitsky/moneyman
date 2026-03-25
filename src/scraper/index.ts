@@ -139,6 +139,7 @@ async function scrapeAccount(
 
   return {
     companyId: account.companyId,
+    alias: (account as Record<string, unknown>).alias as string | undefined,
     result,
   };
 }

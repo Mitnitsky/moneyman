@@ -20,6 +20,7 @@ export interface TransactionRow extends Transaction {
 
 export interface AccountScrapeResult {
   companyId: CompanyTypes;
+  alias?: string;
   result: ScraperScrapingResult;
 }
 

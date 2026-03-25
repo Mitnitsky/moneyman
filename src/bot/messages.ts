@@ -17,10 +17,10 @@ function blockquote(title: string, lines: string[], expandable = true): string {
 function getAccountsSummary(results: Array<AccountScrapeResult>): string {
   const successfulAccounts = results
     .filter(({ result }) => result.success)
-    .flatMap(({ result, companyId }) =>
+    .flatMap(({ result, companyId, alias }) =>
       result.accounts?.map(
         (account) =>
-          `\t✔️ [${companyId}] ${escapers.HTML(account.accountNumber)}: ${account.txns.length}`,
+          `\t✔️ [${alias || companyId}] ${escapers.HTML(account.accountNumber)}: ${account.txns.length}`,
       ),
     )
     .filter((account): account is string => account !== undefined);
@@ -28,8 +28,8 @@ function getAccountsSummary(results: Array<AccountScrapeResult>): string {
   const errorAccounts = results
     .filter(({ result }) => !result.success)
     .map(
-      ({ result, companyId }) =>
-        `\t❌ [${companyId}] ${result.errorType}${
+      ({ result, companyId, alias }) =>
+        `\t❌ [${alias || companyId}] ${result.errorType}${
           result.errorMessage
             ? `\n\t\t${escapers.HTML(result.errorMessage)}`
             : ""
