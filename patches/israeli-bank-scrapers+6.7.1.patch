@@ -12,15 +12,31 @@ index e9fe28e..0321291 100644
    [CompanyTypes.leumi]: {
      name: 'Bank Leumi',
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js b/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
-index efd9183..cf12d26 100644
+index efd9183..8e1d23c 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
-@@ -45,7 +45,7 @@ async function fillInput(pageOrFrame, inputSelector, inputValue) {
-     // @ts-ignore
-     inputElement.value = '';
-   });
+@@ -40,12 +40,18 @@ async function waitUntilIframeFound(page, framePredicate, description = '', time
+   return frame;
+ }
+ async function fillInput(pageOrFrame, inputSelector, inputValue) {
+-  await pageOrFrame.$eval(inputSelector, input => {
+-    const inputElement = input;
+-    // @ts-ignore
+-    inputElement.value = '';
+-  });
 -  await pageOrFrame.type(inputSelector, inputValue);
-+  await pageOrFrame.type(inputSelector, inputValue, { delay: 50 });
++  await pageOrFrame.click(inputSelector, { clickCount: 3 });
++  await new Promise(r => setTimeout(r, 100));
++  await pageOrFrame.type(inputSelector, inputValue, { delay: 75 });
++  await new Promise(r => setTimeout(r, 200));
++  // Verify value was fully entered, retry once if not
++  const actual = await pageOrFrame.$eval(inputSelector, el => el.value);
++  if (actual !== inputValue) {
++    await pageOrFrame.click(inputSelector, { clickCount: 3 });
++    await new Promise(r => setTimeout(r, 100));
++    await pageOrFrame.type(inputSelector, inputValue, { delay: 75 });
++    await new Promise(r => setTimeout(r, 200));
++  }
  }
  async function setValue(pageOrFrame, inputSelector, inputValue) {
    await pageOrFrame.$eval(inputSelector, (input, value) => {
