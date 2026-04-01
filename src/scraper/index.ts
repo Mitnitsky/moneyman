@@ -57,29 +57,39 @@ export async function scrapeAccounts(
     accounts.map((account, i) => async () => {
       const { companyId } = account;
       const label = (account as Record<string, unknown>).alias as string || companyId;
+      const browserContext = await createSecureBrowserContext(
+        browser,
+        companyId,
+      );
       return loggerContextStore.run(
         { prefix: `[#${i} ${label}]` },
-        async () =>
-          scrapeAccount(
-            account,
-            {
-              browserContext: await createSecureBrowserContext(
-                browser,
+        async () => {
+          try {
+            return await scrapeAccount(
+              account,
+              {
+                browserContext,
+                startDate,
                 companyId,
-              ),
-              startDate,
-              companyId,
-              futureMonthsToScrape: futureMonths,
-              storeFailureScreenShotPath: getFailureScreenShotPath(companyId),
-              additionalTransactionInformation,
-              includeRawTransaction,
-              ...scraperOptions,
-            },
-            async (message, append = false) => {
-              status[i] = append ? `${status[i]} ${message}` : message;
-              return scrapeStatusChanged?.(status);
-            },
-          ),
+                futureMonthsToScrape: futureMonths,
+                storeFailureScreenShotPath: getFailureScreenShotPath(companyId),
+                additionalTransactionInformation,
+                includeRawTransaction,
+                ...scraperOptions,
+              },
+              async (message, append = false) => {
+                status[i] = append ? `${status[i]} ${message}` : message;
+                return scrapeStatusChanged?.(status);
+              },
+            );
+          } finally {
+            try {
+              await browserContext.close();
+            } catch {
+              // context may already be closed
+            }
+          }
+        },
       );
     }),
     Number(parallelScrapers),
