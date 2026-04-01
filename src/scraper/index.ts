@@ -56,7 +56,7 @@ export async function scrapeAccounts(
   const results = await parallelLimit<AccountConfig, AccountScrapeResult[]>(
     accounts.map((account, i) => async () => {
       const { companyId } = account;
-      const label = (account as Record<string, unknown>).alias as string || companyId;
+      const label = account.alias || companyId;
       const browserContext = await createSecureBrowserContext(
         browser,
         companyId,
@@ -149,7 +149,7 @@ async function scrapeAccount(
 
   return {
     companyId: account.companyId,
-    alias: (account as Record<string, unknown>).alias as string | undefined,
+    alias: account.alias,
     result,
   };
 }

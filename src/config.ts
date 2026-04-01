@@ -87,8 +87,10 @@ function getAccounts(): Array<AccountConfig> {
 
   return !accountsToScrape || accountsToScrape.length === 0
     ? allAccounts
-    : allAccounts.filter((account) =>
-        accountsToScrape.includes(account.companyId),
+    : allAccounts.filter(
+        (account) =>
+          accountsToScrape.includes(account.companyId) ||
+          (account.alias && accountsToScrape.includes(account.alias)),
       );
 }
 

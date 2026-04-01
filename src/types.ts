@@ -9,6 +9,7 @@ export type { Transaction };
 
 export type AccountConfig = ScraperCredentials & {
   companyId: CompanyTypes;
+  alias?: string;
 };
 
 export interface TransactionRow extends Transaction {
