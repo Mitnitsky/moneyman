@@ -50,13 +50,31 @@ export async function scrapeAccounts(
   const status: Array<string> = [];
 
   logger("Creating a browser");
-  const browser = await createBrowser();
+  let browser = await createBrowser();
   logger(`Browser created, starting to scrape ${accounts.length} accounts`);
+
+  const scrapedCompanyIds = new Set<string>();
 
   const results = await parallelLimit<AccountConfig, AccountScrapeResult[]>(
     accounts.map((account, i) => async () => {
       const { companyId } = account;
       const label = account.alias || companyId;
+
+      // If we already scraped this companyId, create a fresh browser
+      // to avoid Cloudflare blocking the second session on the same domain
+      if (scrapedCompanyIds.has(companyId)) {
+        logger(
+          `Recreating browser for duplicate companyId: ${companyId}`,
+        );
+        try {
+          await browser.close();
+        } catch {
+          // ignore close errors
+        }
+        browser = await createBrowser();
+      }
+      scrapedCompanyIds.add(companyId);
+
       const browserContext = await createSecureBrowserContext(
         browser,
         companyId,
