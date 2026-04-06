@@ -60,12 +60,14 @@ export async function scrapeAccounts(
       const { companyId } = account;
       const label = account.alias || companyId;
 
-      // If we already scraped this companyId, create a fresh browser
-      // to avoid Cloudflare blocking the second session on the same domain
+      // If we already scraped this companyId, wait and create a fresh browser
+      // to avoid IP-based rate limiting on the same domain
       if (scrapedCompanyIds.has(companyId)) {
+        const cooldownMs = 30_000;
         logger(
-          `Recreating browser for duplicate companyId: ${companyId}`,
+          `Duplicate companyId: ${companyId}, waiting ${cooldownMs / 1000}s before recreating browser`,
         );
+        await new Promise((resolve) => setTimeout(resolve, cooldownMs));
         try {
           await browser.close();
         } catch {
