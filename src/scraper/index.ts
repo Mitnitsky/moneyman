@@ -59,10 +59,12 @@ export async function scrapeAccounts(
     accounts.map((account, i) => async () => {
       const { companyId } = account;
       const label = account.alias || companyId;
+      const isDuplicate = scrapedCompanyIds.has(companyId);
+      scrapedCompanyIds.add(companyId);
 
       // If we already scraped this companyId, wait and create a fresh browser
       // to avoid IP-based rate limiting on the same domain
-      if (scrapedCompanyIds.has(companyId)) {
+      if (isDuplicate) {
         const cooldownMs = 30_000;
         logger(
           `Duplicate companyId: ${companyId}, waiting ${cooldownMs / 1000}s before recreating browser`,
@@ -75,42 +77,69 @@ export async function scrapeAccounts(
         }
         browser = await createBrowser();
       }
-      scrapedCompanyIds.add(companyId);
 
-      const browserContext = await createSecureBrowserContext(
-        browser,
-        companyId,
-      );
-      return loggerContextStore.run(
-        { prefix: `[#${i} ${label}]` },
-        async () => {
-          try {
-            return await scrapeAccount(
-              account,
-              {
-                browserContext,
-                startDate,
-                companyId,
-                futureMonthsToScrape: futureMonths,
-                storeFailureScreenShotPath: getFailureScreenShotPath(companyId),
-                additionalTransactionInformation,
-                includeRawTransaction,
-                ...scraperOptions,
-              },
-              async (message, append = false) => {
-                status[i] = append ? `${status[i]} ${message}` : message;
-                return scrapeStatusChanged?.(status);
-              },
-            );
-          } finally {
+      const maxAttempts = isDuplicate ? 3 : 1;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const browserContext = await createSecureBrowserContext(
+          browser,
+          companyId,
+        );
+        const result = await loggerContextStore.run(
+          { prefix: `[#${i} ${label}]` },
+          async () => {
             try {
-              await browserContext.close();
-            } catch {
-              // context may already be closed
+              return await scrapeAccount(
+                account,
+                {
+                  browserContext,
+                  startDate,
+                  companyId,
+                  futureMonthsToScrape: futureMonths,
+                  storeFailureScreenShotPath:
+                    getFailureScreenShotPath(companyId),
+                  additionalTransactionInformation,
+                  includeRawTransaction,
+                  ...scraperOptions,
+                },
+                async (message, append = false) => {
+                  status[i] = append ? `${status[i]} ${message}` : message;
+                  return scrapeStatusChanged?.(status);
+                },
+              );
+            } finally {
+              try {
+                await browserContext.close();
+              } catch {
+                // context may already be closed
+              }
             }
+          },
+        );
+
+        // Retry on failure for duplicate companyIds (IP rate limiting)
+        if (
+          !result.result.success &&
+          attempt < maxAttempts
+        ) {
+          const retryDelay = attempt * 30_000;
+          logger(
+            `[${label}] Attempt ${attempt}/${maxAttempts} failed, retrying in ${retryDelay / 1000}s`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          try {
+            await browser.close();
+          } catch {
+            // ignore close errors
           }
-        },
-      );
+          browser = await createBrowser();
+          continue;
+        }
+
+        return result;
+      }
+
+      // Unreachable, but TypeScript needs it
+      throw new Error("Unexpected: all retry attempts exhausted without return");
     }),
     Number(parallelScrapers),
   );
