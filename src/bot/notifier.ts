@@ -11,10 +11,7 @@ const logger = createLogger("notifier");
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
 
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  label: string,
-): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       return await fn();

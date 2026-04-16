@@ -117,10 +117,7 @@ export async function scrapeAccounts(
         );
 
         // Retry on failure for duplicate companyIds (IP rate limiting)
-        if (
-          !result.result.success &&
-          attempt < maxAttempts
-        ) {
+        if (!result.result.success && attempt < maxAttempts) {
           const retryDelay = attempt * 30_000;
           logger(
             `[${label}] Attempt ${attempt}/${maxAttempts} failed, retrying in ${retryDelay / 1000}s`,
@@ -139,7 +136,9 @@ export async function scrapeAccounts(
       }
 
       // Unreachable, but TypeScript needs it
-      throw new Error("Unexpected: all retry attempts exhausted without return");
+      throw new Error(
+        "Unexpected: all retry attempts exhausted without return",
+      );
     }),
     Number(parallelScrapers),
   );
