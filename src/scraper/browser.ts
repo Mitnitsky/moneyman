@@ -60,42 +60,46 @@ async function initCloudflareSkipping(browserContext: BrowserContext) {
   browserContext.on(
     "targetcreated",
     runInLoggerContext(async (target) => {
-      if (target.type() === TargetType.PAGE) {
-        logger("Target created %o", target.type());
-        const page = await target.page();
-        if (!page) return;
+      try {
+        if (target.type() === TargetType.PAGE) {
+          logger("Target created %o", target.type());
+          const page = await target.page();
+          if (!page) return;
 
-        const userAgent = await page.evaluate(() => navigator.userAgent);
-        const newUA = userAgent.replace("HeadlessChrome/", "Chrome/");
-        logger("Replacing user agent", { userAgent, newUA });
+          const userAgent = await page.evaluate(() => navigator.userAgent);
+          const newUA = userAgent.replace("HeadlessChrome/", "Chrome/");
+          logger("Replacing user agent", { userAgent, newUA });
 
-        await page.setUserAgent(newUA);
-        await page.setExtraHTTPHeaders({
-          "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
-        });
+          await page.setUserAgent(newUA);
+          await page.setExtraHTTPHeaders({
+            "accept-language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+          });
 
-        page.on(
-          "framenavigated",
-          runInLoggerContext((frame) => {
-            const url = frame.url();
-            if (!url || url === "about:blank") return;
-            logger("Frame navigated", {
-              url,
-              parentFrameUrl: frame.parentFrame()?.url(),
-            });
-            if (url.includes(cfParam)) {
-              logger("Cloudflare challenge detected");
-              solveTurnstile(page).then(
-                (res) => {
-                  logger(`Cloudflare challenge ended with ${res} for ${url}`);
-                },
-                (error) => {
-                  logger(`Cloudflare challenge failed for ${url}`, error);
-                },
-              );
-            }
-          }, activeContext),
-        );
+          page.on(
+            "framenavigated",
+            runInLoggerContext((frame) => {
+              const url = frame.url();
+              if (!url || url === "about:blank") return;
+              logger("Frame navigated", {
+                url,
+                parentFrameUrl: frame.parentFrame()?.url(),
+              });
+              if (url.includes(cfParam)) {
+                logger("Cloudflare challenge detected");
+                solveTurnstile(page).then(
+                  (res) => {
+                    logger(`Cloudflare challenge ended with ${res} for ${url}`);
+                  },
+                  (error) => {
+                    logger(`Cloudflare challenge failed for ${url}`, error);
+                  },
+                );
+              }
+            }, activeContext),
+          );
+        }
+      } catch (error) {
+        logger("Error setting up page (likely navigation race)", error);
       }
     }, activeContext),
   );
