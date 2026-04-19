@@ -1,4 +1,4 @@
-name: Scrape
+name: Scrape (Ella)
 
 on:
   workflow_dispatch:
@@ -17,8 +17,8 @@ on:
         required: false
         default: "moneyman:*"
   schedule:
-    # 1:05 PM IDT (UTC+3)
-    - cron: "5 10 * * *"
+    # 1:10 PM IDT (UTC+3) — 5 min after Vova to avoid overlap
+    - cron: "10 10 * * *"
 env:
   REGISTRY: ghcr.io
 jobs:
@@ -43,7 +43,7 @@ jobs:
           -e SEND_NEW_CONFIG_TO_TG
           ${{ steps.set-container-image.outputs.image }}
         env:
-          MONEYMAN_CONFIG: ${{ secrets.MONEYMAN_CONFIG }}
+          MONEYMAN_CONFIG: ${{ secrets.MONEYMAN_CONFIG_ELLA }}
           DEBUG: ${{ github.event.inputs.DEBUG || '' }}
           TZ: "Asia/Jerusalem"
           SEND_NEW_CONFIG_TO_TG: ${{ github.event.inputs.sendNewConfigToTg }}
