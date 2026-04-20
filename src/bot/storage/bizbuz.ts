@@ -33,6 +33,9 @@ export class BizBuzStorage implements TransactionStorage {
 
     const payload = {
       familyId: bizbuzConfig.familyId,
+      metadata: {
+        source: bizbuzConfig.source || "unknown",
+      },
       transactions: nonPendingTxns.map((tx) => ({
         uniqueId: tx.uniqueId,
         date: tx.date,

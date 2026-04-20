@@ -85,6 +85,7 @@ export const BizBuzSchema = z.object({
   url: z.url({ error: "Invalid BizBuz ingest URL" }),
   token: z.string().min(1, { error: "BizBuz ingest token is required" }),
   familyId: z.string().min(1, { error: "BizBuz family ID is required" }),
+  source: z.string().optional(),
 });
 
 export const TelegramStorageSchema = z.object({
