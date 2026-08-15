@@ -60,6 +60,10 @@ jobs:
                   continue;
                 }
                 
+                // The 'latest' tag must never be deleted: the scrape workflows
+                // pull it and deleting it breaks them with "manifest unknown".
+                const isLatest = tags.includes('latest');
+
                 // Check if any tag matches our keep patterns
                 const hasKeepTags = tags.some(tag => 
                   tag === 'latest' || 
@@ -67,8 +71,8 @@ jobs:
                   tag.startsWith('sha-')
                 );
                 
-                // Keep the package if it has keep tags AND is less than 3 months old
-                const shouldKeep = hasKeepTags && createdAt > threeMonthsAgo;
+                // Always keep 'latest'; otherwise keep tagged packages less than 3 months old
+                const shouldKeep = isLatest || (hasKeepTags && createdAt > threeMonthsAgo);
                 
                 if (shouldKeep) {
                   console.log(`Keeping package ${pkg.id} with tags: ${tags.join(', ')} (created: ${createdAt.toISOString()})`);
@@ -142,6 +146,10 @@ jobs:
                       continue;
                     }
                     
+                    // The 'latest' tag must never be deleted: the scrape workflows
+                    // pull it and deleting it breaks them with "manifest unknown".
+                    const isLatest = tags.includes('latest');
+
                     // Check if any tag matches our keep patterns
                     const hasKeepTags = tags.some(tag => 
                       tag === 'latest' || 
@@ -149,8 +157,8 @@ jobs:
                       tag.startsWith('sha-')
                     );
                     
-                    // Keep the package if it has keep tags AND is less than 3 months old
-                    const shouldKeep = hasKeepTags && createdAt > threeMonthsAgo;
+                    // Always keep 'latest'; otherwise keep tagged packages less than 3 months old
+                    const shouldKeep = isLatest || (hasKeepTags && createdAt > threeMonthsAgo);
                     
                     if (shouldKeep) {
                       console.log(`Keeping package ${pkg.id} with tags: ${tags.join(', ')} (created: ${createdAt.toISOString()})`);

@@ -41,8 +41,19 @@ jobs:
           echo "Current HEAD: ${HEAD_SHA:0:7}"
 
           if [ "$RELEASE_SHA" = "$HEAD_SHA" ]; then
-            echo "✅ HEAD is already released as $LATEST_TAG, skipping build"
-            echo "needed=false" >> $GITHUB_OUTPUT
+            # HEAD is already released, but the 'latest' image may have been
+            # removed from the registry (e.g. by the cleanup workflow). If so,
+            # rebuild so the scrape workflows can pull ':latest' again.
+            REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+            HAS_LATEST=$(gh api "/users/${{ github.repository_owner }}/packages/container/${REPO_NAME}/versions" \
+              --jq '[.[] | select(.metadata.container.tags[]? == "latest")] | length' 2>/dev/null || echo "0")
+            if [ -z "$HAS_LATEST" ] || [ "$HAS_LATEST" = "0" ]; then
+              echo "⚠️ HEAD is released as $LATEST_TAG but ':latest' image is missing, rebuilding"
+              echo "needed=true" >> $GITHUB_OUTPUT
+            else
+              echo "✅ HEAD is already released as $LATEST_TAG and ':latest' image exists, skipping build"
+              echo "needed=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "🆕 New commits since $LATEST_TAG, proceeding with build"
             echo "needed=true" >> $GITHUB_OUTPUT
