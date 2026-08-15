@@ -12,10 +12,10 @@ index e9fe28e..0321291 100644
    [CompanyTypes.leumi]: {
      name: 'Bank Leumi',
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js b/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
-index efd9183..8e1d23c 100644
+index efd9183..8441a72 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/elements-interactions.js
-@@ -40,12 +40,18 @@ async function waitUntilIframeFound(page, framePredicate, description = '', time
+@@ -40,12 +40,25 @@ async function waitUntilIframeFound(page, framePredicate, description = '', time
    return frame;
  }
  async function fillInput(pageOrFrame, inputSelector, inputValue) {
@@ -23,28 +23,34 @@ index efd9183..8e1d23c 100644
 -    const inputElement = input;
 -    // @ts-ignore
 -    inputElement.value = '';
--  });
--  await pageOrFrame.type(inputSelector, inputValue);
-+  await pageOrFrame.click(inputSelector, { clickCount: 3 });
++  await pageOrFrame.click(inputSelector, {
++    clickCount: 3
++  });
 +  await new Promise(r => setTimeout(r, 100));
-+  await pageOrFrame.type(inputSelector, inputValue, { delay: 75 });
++  await pageOrFrame.type(inputSelector, inputValue, {
++    delay: 75
+   });
+-  await pageOrFrame.type(inputSelector, inputValue);
 +  await new Promise(r => setTimeout(r, 200));
-+  // Verify value was fully entered, retry once if not
 +  const actual = await pageOrFrame.$eval(inputSelector, el => el.value);
 +  if (actual !== inputValue) {
-+    await pageOrFrame.click(inputSelector, { clickCount: 3 });
++    await pageOrFrame.click(inputSelector, {
++      clickCount: 3
++    });
 +    await new Promise(r => setTimeout(r, 100));
-+    await pageOrFrame.type(inputSelector, inputValue, { delay: 75 });
++    await pageOrFrame.type(inputSelector, inputValue, {
++      delay: 75
++    });
 +    await new Promise(r => setTimeout(r, 200));
 +  }
  }
  async function setValue(pageOrFrame, inputSelector, inputValue) {
    await pageOrFrame.$eval(inputSelector, (input, value) => {
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-index 9252ba4..690508c 100644
+index 618bf63..38400aa 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-@@ -55,7 +55,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
+@@ -58,7 +58,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
    }
    return result.data;
  }
@@ -56,40 +62,31 @@ index 9252ba4..690508c 100644
 +    if (viewport) {
 +      const x = Math.floor(Math.random() * viewport.width);
 +      const y = Math.floor(Math.random() * viewport.height);
-+      await page.mouse.move(x, y, { steps: 5 + Math.floor(Math.random() * 10) });
++      await page.mouse.move(x, y, {
++        steps: 5 + Math.floor(Math.random() * 10)
++      });
 +    }
-+  } catch (e) {
-+    // ignore mouse movement errors
-+  }
++  } catch (e) {}
 +}
  async function fetchGetWithinPage(page, url, ignoreErrors = false) {
 +  await simulateHumanBehavior(page);
    const [result, status] = await page.evaluate(async innerUrl => {
      let response;
      try {
-@@ -82,6 +97,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
+@@ -88,6 +103,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
    return null;
  }
  async function fetchPostWithinPage(page, url, data, extraHeaders = {}, ignoreErrors = false) {
 +  await simulateHumanBehavior(page);
-   const result = await page.evaluate(async (innerUrl, innerData, innerExtraHeaders) => {
+   const [resultText, status] = await page.evaluate(async (innerUrl, innerData, innerExtraHeaders) => {
      const response = await fetch(innerUrl, {
        method: 'POST',
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js b/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
-index c1a1f32..fe4258e 100644
+index 8125550..8c141e6 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
-@@ -19,7 +19,7 @@ var _errors = require("./errors");
- var _browser = require("../helpers/browser");
- function _interopRequireDefault(e) { return e && e.__esModule ? e : { default: e }; }
- const RATE_LIMIT = {
--  SLEEP_BETWEEN: 1000,
-+  SLEEP_BETWEEN: 3000,
-   TRANSACTIONS_BATCH_SIZE: 10
- };
- const COUNTRY_CODE = '212';
-@@ -240,15 +240,11 @@ class IsracardAmexBaseScraper extends _baseScraperWithBrowser.BaseScraperWithBro
-   async login(credentials) {
+@@ -250,15 +250,11 @@ class IsracardAmexBaseScraper extends _baseScraperWithBrowser.BaseScraperWithBro
+     const loginStartTime = performance.now();
      await this.page.setRequestInterception(true);
      this.page.on('request', request => {
 -      if (request.url().includes('detector-dom.min.js')) {
@@ -107,58 +104,47 @@ index c1a1f32..fe4258e 100644
      const validateUrl = `${this.servicesUrl}?reqName=ValidateIdData`;
      const validateRequest = {
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
-index e7dc174..484ab43 100644
+index 4ffa0b2..bda9a26 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
 +++ b/node_modules/israeli-bank-scrapers/lib/scrapers/hapoalim.js
-@@ -177,6 +177,60 @@ function createLoginFields(credentials) {
+@@ -177,6 +177,48 @@ function createLoginFields(credentials) {
      value: credentials.password
    }];
  }
 +async function handleOtpIfNeeded(page, credentials) {
 +  debug('racing OTP dialog vs redirect...');
 +  try {
-+    const LOGIN_URL = 'https://login.bankhapoalim.co.il';
-+    // Race: OTP dialog appears OR page redirects away from login
-+    const result = await Promise.race([
-+      page.waitForSelector('auth-otp-login', { timeout: 30000 }).then(el => 'otp'),
-+      (0, _navigation.waitForRedirect)(page, 30000).then(() => 'redirect'),
-+    ]);
-+
++    const result = await Promise.race([page.waitForSelector('auth-otp-login', {
++      timeout: 30000
++    }).then(() => 'otp'), (0, _navigation.waitForRedirect)(page, 30000).then(() => 'redirect')]);
 +    if (result === 'redirect') {
 +      debug('redirected without OTP, login successful');
 +      return;
 +    }
-+
 +    debug('OTP dialog detected!');
-+
 +    if (!credentials.otpCodeRetriever) {
 +      debug('no otpCodeRetriever provided, waiting for manual OTP entry...');
-+      // Wait up to 5 minutes for manual entry and redirect
 +      await (0, _navigation.waitForRedirect)(page, 300000);
 +      return;
 +    }
-+
 +    debug('requesting OTP code via otpCodeRetriever...');
 +    const otpCode = await credentials.otpCodeRetriever();
 +    debug('got OTP code, entering into form...');
-+
 +    if (!otpCode || otpCode.length < 5) {
 +      throw new Error('Invalid OTP code received (must be at least 5 digits)');
 +    }
-+
-+    // Enter code into separated inputs
 +    for (let i = 0; i < Math.min(otpCode.length, 5); i++) {
 +      const selector = `[data-testid="separated-${i}"]`;
-+      await page.waitForSelector(selector, { timeout: 5000 });
++      await page.waitForSelector(selector, {
++        timeout: 5000
++      });
 +      await page.click(selector);
 +      await page.type(selector, otpCode[i]);
 +      await (0, _waiting.sleep)(100);
 +    }
-+
 +    debug('clicking submit...');
 +    await (0, _waiting.sleep)(500);
 +    await page.click('button.btn-red_1');
-+
 +    debug('waiting for redirect after OTP...');
 +    await (0, _navigation.waitForRedirect)(page, 30000);
 +    debug('OTP flow completed successfully');
@@ -167,11 +153,10 @@ index e7dc174..484ab43 100644
 +    throw e;
 +  }
 +}
-+
  class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
-   // eslint-disable-next-line class-methods-use-this
    get baseUrl() {
-@@ -187,7 +241,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+     return 'https://login.bankhapoalim.co.il';
+@@ -186,7 +228,7 @@ class HapoalimScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
        loginUrl: `${this.baseUrl}/cgi-bin/poalwwwc?reqName=getLogonPage`,
        fields: createLoginFields(credentials),
        submitButtonSelector: '.login-btn',

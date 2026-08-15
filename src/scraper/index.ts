@@ -34,7 +34,7 @@ export async function scrapeAccounts(
     status: Array<string>,
     totalTime?: number,
   ) => Promise<void>,
-  onError?: (e: Error, caller: string) => void,
+  onError?: (e: unknown, caller: string) => void,
 ) {
   const start = performance.now();
 
@@ -91,7 +91,8 @@ export async function scrapeAccounts(
               return await scrapeAccount(
                 account,
                 {
-                  browserContext,
+                  // Safe to remove when israeli-bank-scrapers upgrades to puppeteer 25+
+                  browserContext: browserContext as any,
                   startDate,
                   companyId,
                   futureMonthsToScrape: futureMonths,

@@ -55,14 +55,14 @@ describe("OTP utilities", () => {
       expect(shouldCreateOtpRetriever(account)).toBe(false);
     });
 
-    it("should return false for non-OneZero account", () => {
+    it("should return true for Hapoalim account", () => {
       const account = {
         companyId: CompanyTypes.hapoalim,
         userCode: "123456",
         password: "password",
       } as AccountConfig;
 
-      expect(shouldCreateOtpRetriever(account)).toBe(false);
+      expect(shouldCreateOtpRetriever(account)).toBe(true);
     });
   });
 
@@ -81,7 +81,7 @@ describe("OTP utilities", () => {
       expect(typeof (prepared as any).otpCodeRetriever).toBe("function");
     });
 
-    it("should not modify accounts that don't need OTP", () => {
+    it("should add otpCodeRetriever for Hapoalim accounts", () => {
       const account = {
         companyId: CompanyTypes.hapoalim,
         userCode: "123456",
@@ -90,7 +90,8 @@ describe("OTP utilities", () => {
 
       const prepared = prepareAccountCredentials(account);
 
-      expect(prepared).toEqual({});
+      expect(prepared).toHaveProperty("otpCodeRetriever");
+      expect(typeof (prepared as any).otpCodeRetriever).toBe("function");
       expect(account).toEqual({
         companyId: CompanyTypes.hapoalim,
         userCode: "123456",
