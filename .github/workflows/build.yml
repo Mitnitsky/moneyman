@@ -22,6 +22,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check if release needed
         id: check
         run: |
@@ -41,8 +48,14 @@ jobs:
           echo "Current HEAD: ${HEAD_SHA:0:7}"
 
           if [ "$RELEASE_SHA" = "$HEAD_SHA" ]; then
-            echo "✅ HEAD is already released as $LATEST_TAG, skipping build"
-            echo "needed=false" >> $GITHUB_OUTPUT
+            IMAGE="${REGISTRY}/${GITHUB_REPOSITORY,,}:latest"
+            if docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+              echo "✅ HEAD is already released as $LATEST_TAG and $IMAGE exists, skipping build"
+              echo "needed=false" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ HEAD is already released as $LATEST_TAG, but $IMAGE is missing"
+              echo "needed=true" >> $GITHUB_OUTPUT
+            fi
           else
             echo "🆕 New commits since $LATEST_TAG, proceeding with build"
             echo "needed=true" >> $GITHUB_OUTPUT
@@ -81,14 +94,6 @@ jobs:
           echo "📦 Generated version: ${VERSION} (commit: ${SHORT_SHA})"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to the Container registry
-        if: steps.check.outputs.needed == 'true'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract Docker metadata and set tags
         if: steps.check.outputs.needed == 'true'

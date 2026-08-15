@@ -39,6 +39,11 @@ jobs:
                 const createdAt = new Date(pkg.created_at);
                 const threeMonthsAgo = new Date();
                 threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+                if (tags.includes('latest')) {
+                  console.log(`Keeping current package ${pkg.id} with tags: ${tags.join(', ')}`);
+                  continue;
+                }
                 
                 // Delete if no tags (untagged packages should be removed)
                 if (tags.length === 0) {
@@ -61,9 +66,8 @@ jobs:
                 }
                 
                 // Check if any tag matches our keep patterns
-                const hasKeepTags = tags.some(tag => 
-                  tag === 'latest' || 
-                  tag.startsWith('pr-') || 
+                const hasKeepTags = tags.some(tag =>
+                  tag.startsWith('pr-') ||
                   tag.startsWith('sha-')
                 );
                 
@@ -121,6 +125,11 @@ jobs:
                     const createdAt = new Date(pkg.created_at);
                     const threeMonthsAgo = new Date();
                     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+                    if (tags.includes('latest')) {
+                      console.log(`Keeping current package ${pkg.id} with tags: ${tags.join(', ')}`);
+                      continue;
+                    }
                     
                     // Delete if no tags (untagged packages should be removed)
                     if (tags.length === 0) {
@@ -143,9 +152,8 @@ jobs:
                     }
                     
                     // Check if any tag matches our keep patterns
-                    const hasKeepTags = tags.some(tag => 
-                      tag === 'latest' || 
-                      tag.startsWith('pr-') || 
+                    const hasKeepTags = tags.some(tag =>
+                      tag.startsWith('pr-') ||
                       tag.startsWith('sha-')
                     );
                     
