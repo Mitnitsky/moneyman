@@ -47,7 +47,7 @@ index efd9183..8441a72 100644
  async function setValue(pageOrFrame, inputSelector, inputValue) {
    await pageOrFrame.$eval(inputSelector, (input, value) => {
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-index 618bf63..3d18d4a 100644
+index 618bf63..38400aa 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 @@ -58,7 +58,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
@@ -81,15 +81,6 @@ index 618bf63..3d18d4a 100644
    const [resultText, status] = await page.evaluate(async (innerUrl, innerData, innerExtraHeaders) => {
      const response = await fetch(innerUrl, {
        method: 'POST',
-@@ -111,7 +127,7 @@ async function fetchPostWithinPage(page, url, data, extraHeaders = {}, ignoreErr
-     }
-   } catch (e) {
-     if (!ignoreErrors) {
--      throw new Error(`fetchPostWithinPage parse error: ${e instanceof Error ? `${e.message}\n${e.stack}` : String(e)}, url: ${url}, data: ${JSON.stringify(data)}, extraHeaders: ${JSON.stringify(extraHeaders)}, result: ${resultText}`);
-+      throw new Error(`fetchPostWithinPage returned invalid JSON, url: ${url.split(/[?#]/)[0]}, status: ${status}`);
-     }
-   }
-   return null;
 diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js b/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
 index 8125550..8c141e6 100644
 --- a/node_modules/israeli-bank-scrapers/lib/scrapers/base-isracard-amex.js
@@ -174,55 +165,3 @@ index 4ffa0b2..bda9a26 100644
        possibleResults: getPossibleLoginResults(this.baseUrl)
      };
    }
-diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-index c4eb62b..5105fa6 100644
---- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-+++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
-@@ -282,14 +282,13 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
-   }
-   async fetchCardData(card, startMoment, startDate, futureMonthsToScrape, Authorization, xSiteId) {
-     debug('fetch frames (misgarot) for card %s', card.cardUniqueId);
--    const frames = await (0, _fetch.fetchPost)(FRAMES_REQUEST_ENDPOINT, {
-+    const frames = await (0, _fetch.fetchPostWithinPage)(this.page, FRAMES_REQUEST_ENDPOINT, {
-       cardsForFrameData: [{
-         cardUniqueId: card.cardUniqueId
-       }]
-     }, {
-       Authorization,
-       'X-Site-Id': xSiteId,
--      'Content-Type': 'application/json',
--      ...apiHeaders
-+      'Content-Type': 'application/json'
-     });
-     debug('frames response for card %s: %O', card.cardUniqueId, frames);
-@@ -316,26 +315,24 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
-     const months = finalMonthToFetchMoment.diff(startMoment, 'months');
-     const allMonthsData = [];
-     debug(`fetch pending transactions for card ${card.cardUniqueId}`);
--    let pendingData = await (0, _fetch.fetchPost)(PENDING_TRANSACTIONS_REQUEST_ENDPOINT, {
-+    let pendingData = await (0, _fetch.fetchPostWithinPage)(this.page, PENDING_TRANSACTIONS_REQUEST_ENDPOINT, {
-       cardUniqueIDArray: [card.cardUniqueId]
-     }, {
-       Authorization,
-       'X-Site-Id': xSiteId,
--      'Content-Type': 'application/json',
--      ...apiHeaders
-+      'Content-Type': 'application/json'
-     });
-     debug(`fetch completed transactions for card ${card.cardUniqueId}`);
-     for (let i = 0; i <= months; i++) {
-       const month = finalMonthToFetchMoment.clone().subtract(i, 'months');
--      const monthData = await (0, _fetch.fetchPost)(TRANSACTIONS_REQUEST_ENDPOINT, {
-+      const monthData = await (0, _fetch.fetchPostWithinPage)(this.page, TRANSACTIONS_REQUEST_ENDPOINT, {
-         cardUniqueId: card.cardUniqueId,
-         month: month.format('M'),
-         year: month.format('YYYY')
-       }, {
-         Authorization,
-         'X-Site-Id': xSiteId,
--        'Content-Type': 'application/json',
--        ...apiHeaders
-+        'Content-Type': 'application/json'
-       });
-       if (monthData?.statusCode !== 1) throw new Error(`failed to fetch transactions for card ${card.last4Digits}. Message: ${monthData?.title || ''}`);
-       if (!isCardTransactionDetails(monthData)) {
