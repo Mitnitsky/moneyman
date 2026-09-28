@@ -21,6 +21,9 @@ on:
     - cron: "5 10 * * *"
 env:
   REGISTRY: ghcr.io
+concurrency:
+  group: moneyman-bank-scraping
+  cancel-in-progress: false
 jobs:
   scrape:
     runs-on: ubuntu-latest

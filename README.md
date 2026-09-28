@@ -23,20 +23,28 @@ This app requires some technical skills. If you prefer a GUI app you can use [Ca
 
 ### Cloud (GitHub Actions)
 
-Moneyman can be configured to periodically run automatically, using the [`scrape`](./.github/workflows/scrape.yml) GitHub workflow.
+This fork runs separate [Vova](./.github/workflows/scrape-vova.yml) and
+[Ella](./.github/workflows/scrape-ella.yml) workflows, using the
+`MONEYMAN_CONFIG_VOVA` and `MONEYMAN_CONFIG_ELLA` secrets respectively.
 
-By default, this workflow will run twice daily at 10:05 and 22:05 UTC (12:05 and 00:05 or 13:05 and 01:05 in Israel time, depending on DST).
+They run daily at 10:05 and 10:10 UTC and share a concurrency group so only one
+scraping workflow runs at a time. A new run waits rather than cancelling an
+active scraper.
+
+Each workflow passes only its own configuration secret to its container, so
+account ownership is determined entirely by `MONEYMAN_CONFIG_VOVA` and
+`MONEYMAN_CONFIG_ELLA`.
 
 Since logs are public for public repos, most logs are off by default and the progress and error messages will be sent via Telegram.
 
 #### Setup
 
 1. Fork the [moneyman](https://github.com/daniel-hauser/moneyman) repo to your account
-2. Add the `MONEYMAN_CONFIG` to the [actions secrets](../../settings/secrets/actions) of the forked repo
+2. Add `MONEYMAN_CONFIG_VOVA` and `MONEYMAN_CONFIG_ELLA` to the [actions secrets](../../settings/secrets/actions) of the forked repo
    - Use [`config.example.jsonc`](./config.example.jsonc) as a starting point and add configurations for your selected storage
    - For better logging, add the [Telegram configuration](./docs/telegram-notifications.md) so moneyman can send private logs and errors
 3. Build and upload the Docker image using the "Run workflow" button in [workflows/build.yml](../../actions/workflows/build.yml)
-4. Wait for the [scrape workflow](../../actions/workflows/scrape.yml) to be triggered by GitHub
+4. Run either scraper workflow manually or wait for its daily schedule.
 
 ### Locally
 
@@ -90,6 +98,11 @@ Logs sent to `logToPublicLog` bypass the redirection and will appear in the Dock
 Moneyman uses the [debug](https://www.npmjs.com/package/debug) package for debug messages under the `moneyman:` namespace.
 
 To enable debug output, set the `DEBUG` environment variable to `moneyman:*`.
+
+Non-JSON responses from scraper POST requests report the endpoint and HTTP
+status without including request credentials, URL query parameters, or response
+bodies. The request method is unchanged; these diagnostics do not retry requests
+or switch authentication methods.
 
 ## Settings
 

@@ -47,10 +47,25 @@ index efd9183..8441a72 100644
  async function setValue(pageOrFrame, inputSelector, inputValue) {
    await pageOrFrame.$eval(inputSelector, (input, value) => {
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-index 618bf63..38400aa 100644
+index 618bf63..ce121c8 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-@@ -58,7 +58,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
+@@ -45,7 +45,13 @@ async function fetchPost(url, data, extraHeaders = {}) {
+     body: JSON.stringify(data)
+   };
+   const result = await fetch(url, request);
+-  return result.json();
++  try {
++    return await result.json();
++  } catch (error) {
++    if (!(error instanceof SyntaxError)) throw error;
++    const endpoint = new URL(url);
++    throw new Error(`fetchPost returned invalid JSON, url: ${endpoint.origin}${endpoint.pathname}, status: ${result.status}`);
++  }
+ }
+ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
+   const result = await fetchPost(url, {
+@@ -58,7 +64,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
    }
    return result.data;
  }
@@ -73,7 +88,7 @@ index 618bf63..38400aa 100644
    const [result, status] = await page.evaluate(async innerUrl => {
      let response;
      try {
-@@ -88,6 +103,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
+@@ -88,6 +109,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
    return null;
  }
  async function fetchPostWithinPage(page, url, data, extraHeaders = {}, ignoreErrors = false) {
