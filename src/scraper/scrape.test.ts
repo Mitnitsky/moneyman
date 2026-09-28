@@ -2,6 +2,12 @@ import { CompanyTypes, type ScraperOptions } from "israeli-bank-scrapers";
 import { getAccountTransactions } from "./scrape";
 import { mock, mockClear } from "jest-mock-extended";
 import { type BrowserContext, type Page } from "puppeteer";
+import { logToPublicLog } from "../utils/logger.js";
+
+jest.mock("../utils/logger.js", () => ({
+  ...jest.requireActual("../utils/logger.js"),
+  logToPublicLog: jest.fn(),
+}));
 
 describe("getAccountTransactions", () => {
   const onProgress = jest.fn();
@@ -38,6 +44,10 @@ describe("getAccountTransactions", () => {
 
     expect(result).toBeDefined();
     expect(result.success).toBeFalsy(); // because we didn't mock the scraper
+    expect(logToPublicLog).toHaveBeenCalledWith(
+      "Scraper hapoalim: failed",
+      expect.any(Function),
+    );
 
     expect(browserContext.newPage).toHaveBeenCalledTimes(1);
     expect(browserPage.close).toHaveBeenCalledTimes(1);

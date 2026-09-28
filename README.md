@@ -91,6 +91,15 @@ Moneyman uses the [debug](https://www.npmjs.com/package/debug) package for debug
 
 To enable debug output, set the `DEBUG` environment variable to `moneyman:*`.
 
+Each scraper writes a provider-only success/failure line to the public log,
+without account identifiers or transaction data. Check these lines and the
+Telegram summary rather than relying solely on the workflow's green status.
+
+VisaCal's API requests use the authenticated browser session through the
+`israeli-bank-scrapers` patch. If an API returns invalid JSON, the error reports
+its endpoint and HTTP status without including request headers or response
+bodies. Preserve this behavior when updating the dependency patch.
+
 ## Settings
 
 ### Accounts

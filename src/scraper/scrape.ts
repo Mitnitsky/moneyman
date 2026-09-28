@@ -5,7 +5,7 @@ import {
 } from "israeli-bank-scrapers";
 import { AccountConfig } from "../types.js";
 import { ScraperErrorTypes } from "israeli-bank-scrapers/lib/scrapers/errors.js";
-import { createLogger } from "../utils/logger.js";
+import { createLogger, logToPublicLog } from "../utils/logger.js";
 import { prepareAccountCredentials } from "./otp.js";
 import { isCloudflareBlock } from "./cloudflareSolver.js";
 
@@ -30,6 +30,11 @@ export async function getAccountTransactions(
       ...prepareAccountCredentials(account),
     });
 
+    logToPublicLog(
+      `Scraper ${options.companyId}: ${result.success ? "success" : "failed"}`,
+      logger,
+    );
+
     if (!result.success) {
       const errorMessage = result.errorMessage || "";
       if (isCloudflareBlock(errorMessage)) {
@@ -46,6 +51,7 @@ export async function getAccountTransactions(
 
     return result;
   } catch (e) {
+    logToPublicLog(`Scraper ${options.companyId}: failed`, logger);
     logger(e);
     const errorString = String(e);
 
