@@ -47,10 +47,10 @@ index efd9183..8441a72 100644
  async function setValue(pageOrFrame, inputSelector, inputValue) {
    await pageOrFrame.$eval(inputSelector, (input, value) => {
 diff --git a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-index 618bf63..ce121c8 100644
+index 618bf63..5009a28 100644
 --- a/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
 +++ b/node_modules/israeli-bank-scrapers/lib/helpers/fetch.js
-@@ -45,7 +45,13 @@ async function fetchPost(url, data, extraHeaders = {}) {
+@@ -45,7 +45,15 @@ async function fetchPost(url, data, extraHeaders = {}) {
      body: JSON.stringify(data)
    };
    const result = await fetch(url, request);
@@ -58,14 +58,16 @@ index 618bf63..ce121c8 100644
 +  try {
 +    return await result.json();
 +  } catch (error) {
-+    if (!(error instanceof SyntaxError)) throw error;
++    if (!(error instanceof SyntaxError) && error?.name !== 'SyntaxError') throw error;
 +    const endpoint = new URL(url);
-+    throw new Error(`fetchPost returned invalid JSON, url: ${endpoint.origin}${endpoint.pathname}, status: ${result.status}`);
++    const responseError = new Error(`fetchPost returned invalid JSON, url: ${endpoint.origin}${endpoint.pathname}, status: ${result.status}`);
++    responseError.status = result.status;
++    throw responseError;
 +  }
  }
  async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
    const result = await fetchPost(url, {
-@@ -58,7 +64,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
+@@ -58,7 +66,22 @@ async function fetchGraphql(url, query, variables = {}, extraHeaders = {}) {
    }
    return result.data;
  }
@@ -88,7 +90,7 @@ index 618bf63..ce121c8 100644
    const [result, status] = await page.evaluate(async innerUrl => {
      let response;
      try {
-@@ -88,6 +109,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
+@@ -88,6 +111,7 @@ async function fetchGetWithinPage(page, url, ignoreErrors = false) {
    return null;
  }
  async function fetchPostWithinPage(page, url, data, extraHeaders = {}, ignoreErrors = false) {
@@ -180,3 +182,43 @@ index 4ffa0b2..bda9a26 100644
        possibleResults: getPossibleLoginResults(this.baseUrl)
      };
    }
+diff --git a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
+index c4eb62b..a0853f7 100644
+--- a/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
++++ b/node_modules/israeli-bank-scrapers/lib/scrapers/visa-cal.js
+@@ -327,16 +327,25 @@ class VisaCalScraper extends _baseScraperWithBrowser.BaseScraperWithBrowser {
+     debug(`fetch completed transactions for card ${card.cardUniqueId}`);
+     for (let i = 0; i <= months; i++) {
+       const month = finalMonthToFetchMoment.clone().subtract(i, 'months');
+-      const monthData = await (0, _fetch.fetchPost)(TRANSACTIONS_REQUEST_ENDPOINT, {
+-        cardUniqueId: card.cardUniqueId,
+-        month: month.format('M'),
+-        year: month.format('YYYY')
+-      }, {
+-        Authorization,
+-        'X-Site-Id': xSiteId,
+-        'Content-Type': 'application/json',
+-        ...apiHeaders
+-      });
++      let monthData;
++      try {
++        monthData = await (0, _fetch.fetchPost)(TRANSACTIONS_REQUEST_ENDPOINT, {
++          cardUniqueId: card.cardUniqueId,
++          month: month.format('M'),
++          year: month.format('YYYY')
++        }, {
++          Authorization,
++          'X-Site-Id': xSiteId,
++          'Content-Type': 'application/json',
++          ...apiHeaders
++        });
++      } catch (error) {
++        if (error?.status === 400 && month.isAfter((0, _moment.default)(), 'month')) {
++          debug(`future month ${month.format('YYYY-MM')} is unavailable for card ${card.last4Digits}, skipping`);
++          continue;
++        }
++        throw error;
++      }
+       if (monthData?.statusCode !== 1) throw new Error(`failed to fetch transactions for card ${card.last4Digits}. Message: ${monthData?.title || ''}`);
+       if (!isCardTransactionDetails(monthData)) {
+         throw new Error('monthData is not of type CardTransactionDetails');

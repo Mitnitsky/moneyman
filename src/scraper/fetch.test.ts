@@ -37,17 +37,16 @@ describe("Scraper POST response diagnostics", () => {
           status,
         }),
       );
-      await expect(
-        fetchPost(
-          `${endpoint}?token=private-query#private-fragment`,
-          { cardUniqueId: "private-card" },
-          { Authorization: "private-token" },
-        ),
-      ).rejects.toEqual(
-        new Error(
-          `fetchPost returned invalid JSON, url: ${endpoint}, status: ${status}`,
-        ),
+      const request = fetchPost(
+        `${endpoint}?token=private-query#private-fragment`,
+        { cardUniqueId: "private-card" },
+        { Authorization: "private-token" },
       );
+
+      await expect(request).rejects.toMatchObject({
+        message: `fetchPost returned invalid JSON, url: ${endpoint}, status: ${status}`,
+        status,
+      });
     },
   );
 
